@@ -93,9 +93,7 @@ dark:	lda $d020 ;copy border color into
 		sta $d021 ;main area color
 		
 		
-		ldx #$01
-		lda #$01
-		sta $d800
+		ldx #$00
 color:	lda #$02
 		sta $d800,x
 		sta $d900,x
