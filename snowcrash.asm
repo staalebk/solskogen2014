@@ -4,9 +4,14 @@
 ; Zero page defines:
 	SEG.U VARS
 	ORG $80
-SomeVariableName	ds 1
-TwoByteVariableName	ds 2
-YetAnotherVariable	ds 1
+intcount1	ds 1
+intcount2	ds 1
+scrollbit	ds 1
+scrollchr	ds 1
+scrollpos   ds 1
+scene		ds 1
+
+	echo "----",($100 - *) , "bytes of RAM left"
 	SEG CODE
 
 ; Lets make this stuff autoload address on 4096
@@ -22,6 +27,7 @@ YetAnotherVariable	ds 1
 	tay
 	lda #$0B
 	jsr $C357
+
 	
 	
 ; clear interrupts
@@ -46,36 +52,50 @@ YetAnotherVariable	ds 1
 	lda #$01   ;this is how to tell the VICII to generate a raster interrupt
 	sta $d01a
 
-	lda #$00   ;this is how to tell at which rasterline we want the irq to be triggered
+	lda #$50   ;this is how to tell at which rasterline we want the irq to be triggered
 	sta $d012
 
 	lda #$1b   ;as there are more than 256 rasterlines, the topmost bit of $d011 serves as
 	sta $d011  ;the 8th bit for the rasterline we want our irq to be triggered.
            ;here we simply set up a character screen, leaving the topmost bit 0.
 		   
+	lda #$c9   ; set the scroll as far left as possible.
+	sta $d016
+	sta scrollbit
+		   
 	lda #$1E	; Set the character map to be @ 0x3800
 	sta $d018
 
 
 ;	asl $d019
+; zero some stuff
+	lda #$00
+	sta intcount1
+	sta intcount2
+	sta scrollchr
+	sta scrollpos
+	jsr	clearscr
 	cli			;enable maskable interrupts again
 
-	jmp init	;we better don't RTS, the ROMS are now switched off, there's no way back to the system
+	jmp *	;we better don't RTS, the ROMS are now switched off, there's no way back to the system
 
 
-init:	ldx #$00
+clearscr:	ldx #$00
 		lda #$20
-clearscr: sta $0400,x
+clearscrl: sta $0400,x
 		sta $0500,x
         sta $0600,x
         sta $0700,x
         dex
-        bne clearscr
+        bne clearscrl
 	
 dark:	lda $d020 ;copy border color into
 		sta $d021 ;main area color
 		
-		ldx #$00
+		
+		ldx #$01
+		lda #$01
+		sta $d800
 color:	lda #$02
 		sta $d800,x
 		sta $d900,x
@@ -83,10 +103,11 @@ color:	lda #$02
 		inx
 		cpx #$FF
 		bne color
+		rts
 		
-		ldx #$00
+draw	ldx #$00
 		ldy #$00
-darkl	lda msgz,x
+.loop	lda msgz,x
 		sta $0428,y
 		sec
 		sbc #$40
@@ -101,9 +122,58 @@ darkl	lda msgz,x
 		inx
 		iny
 		cpx #$13
-		bne darkl
+		bne .loop
+		rts
+
+; First move everything one step to the left
+fillr	ldx #$00
+.loopr	lda $0401,x
+		sta $0400,x
+		lda $0429,x
+		sta $0428,x
+		inx
+		cpx #$28
+		bne .loopr
+; Now fill in more juicy stuff on the far right
+		lda scrollchr
+		cmp #$00
+		beq newchar
+oldchar	ldx scrollpos
+		lda msgd,x
+		clc
+		adc #$40
+		sta $0427
+		clc
+		adc #$40
+		sta $044f
+		lda #$00
+		sta scrollchr
+		inc scrollpos
+		rts
 		
-loop:	jmp loop
+newchar	ldx scrollpos
+		lda msgd,x
+		sta $044f
+		sec
+		sbc #$40
+		sta $0427
+		inc scrollchr
+		rts
+		
+		
+		
+dscroll	dec scrollbit
+		dec scrollbit
+		lda scrollbit
+		cmp #$c7
+		bne setsrll
+		jsr fillr
+		lda #$cf
+		sta scrollbit
+
+setsrll sta $d016
+		rts
+		
 
 		
 static:	lda #$01
@@ -134,15 +204,37 @@ irq     STA $02
         LDA $DC0D
         STX $03
         STY $04
- ;      (your code here)
-
-;		lda $d020
-;		eor #$1
-;		sta $d020
+;	Stack is now saved, lets party!
+		inc $d020		;  visualize interrupt
 		jsr $BDE4 ;Play some music
-;		End my code
-
-        LDA #$01
+		; Lets see what we should be doing...
+;init	lda #$00
+;		cmp intcount1
+;		bne dscr
+;		cmp intcount2
+;		bne dscr
+		;jsr clearscr
+;		jsr draw
+		
+dscr	lda #$50
+		cmp intcount1
+		bne prescr
+prescr	lda #$00
+		cmp intcount2
+		;bne timer
+		jsr dscroll
+		
+timer	inc intcount1
+		lda intcount1
+		cmp #$00
+		bne restore
+		inc intcount2
+		
+		
+		
+;	Restore stack
+restore	dec $d020	; visualize interrupt
+		LDA #$0F
         STA $D019
         LDY $04
         LDX $03
