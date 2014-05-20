@@ -59,7 +59,7 @@ scene		ds 1
 	sta $d011  ;the 8th bit for the rasterline we want our irq to be triggered.
            ;here we simply set up a character screen, leaving the topmost bit 0.
 		   
-	lda #$c9   ; set the scroll as far left as possible.
+	lda #$c1   ; set the scroll as far left as possible.
 	sta $d016
 	sta scrollbit
 		   
@@ -165,10 +165,10 @@ newchar	ldx scrollpos
 dscroll	dec scrollbit
 		dec scrollbit
 		lda scrollbit
-		cmp #$c7
+		cmp #$bf
 		bne setsrll
 		jsr fillr
-		lda #$cf
+		lda #$c7
 		sta scrollbit
 
 setsrll sta $d016
