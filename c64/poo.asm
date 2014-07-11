@@ -9,6 +9,9 @@ intcount2	ds 1
 scrollbit	ds 1
 scrollchr	ds 1
 scrollpos   ds 1
+iscrollbit	ds 1
+iscrollchr	ds 1
+iscrollpos  ds 1
 scene		ds 1
 
 	echo "----",($100 - *) , "bytes of RAM left"
@@ -105,26 +108,6 @@ color:	lda #$05
 		cpx #$FF
 		bne color
 		rts
-		
-draw	ldx #$00
-		ldy #$00
-.loop	lda msgz,x
-		sta $04A0,y
-		sec
-		sbc #$40
-		sta $0478,y
-		iny
-		clc
-		adc #$80
-		sta $0478,y
-		clc
-		adc #$40
-		sta $04A0,y
-		inx
-		iny
-		cpx #$13
-		bne .loop
-		rts
 
 ; First move everything one step to the left
 fillr	ldx #$00
@@ -140,7 +123,7 @@ fillr	ldx #$00
 		cmp #$00
 		beq newchar
 oldchar	ldx scrollpos
-		lda msgz,x
+		lda msgpoo,x
 		clc
 		adc #$40
 		sta $049F
@@ -153,7 +136,7 @@ oldchar	ldx scrollpos
 		rts
 		
 newchar	ldx scrollpos
-		lda msgz,x
+		lda msgpoo,x
 		sta $04C7
 		sec
 		sbc #$40
@@ -174,18 +157,63 @@ dscroll	dec scrollbit
 
 setsrll sta $d016
 		rts
-		
 
+
+
+
+
+
+
+
+; First move everything one step to the left
+ifillr	ldx #$00
+.iloopr	lda $0479,x
+		sta $0478,x
+		lda $04A1,x
+		sta $04A0,x
+		inx
+		cpx #$28
+		bne .iloopr
+; Now fill in more juicy stuff on the far right
+		lda iscrollchr
+		cmp #$00
+		beq inewchar
+ioldchar	ldx iscrollpos
+		lda msgpoo,x
+		clc
+		adc #$40
+		sta $049F
+		clc
+		adc #$40
+		sta $04C7
+		lda #$00
+		sta iscrollchr
+		inc iscrollpos
+		rts
 		
-static:	lda #$01
-staticl:	sta $d021
-		nop
-		nop
-		sta $d020
-		eor #$1
-		jmp staticl
+inewchar	ldx iscrollpos
+		lda msgpoo,x
+		sta $04C7
+		sec
+		sbc #$40
+		sta $049F
+		inc iscrollchr
+		rts
 		
 		
+		
+iscroll	dec iscrollbit
+		dec iscrollbit  ; Double speed
+		lda iscrollbit
+		cmp #$bf
+		bne isetsrll
+		jsr ifillr
+		lda #$c7
+		sta iscrollbit
+
+isetsrll sta $d016
+		rts
+
 
 
 	;Being all kernal irq handlers switched off we have to do more work by ourselves.
@@ -223,7 +251,8 @@ dscr	lda #$50
 prescr	lda #$00
 		cmp intcount2
 		;bne timer
-		jsr dscroll
+		;jsr dscroll
+		jsr iscroll
 		
 timer	inc intcount1
 		lda intcount1
@@ -245,7 +274,7 @@ restore		LDA #$0F
 ;msgz .byte "INDIEPOO`PRESENTS``````````EVRY`THING`IS`AWESOME```````````````"
 msgz .byte "LOREMIPS`LOREMLIP``````````XXXX`THING`XX`XXXXXXX```````````````"
 
-msgpoo .byte "INDILOL`INDIPOO`INDINO`INDIBAD`INDIBLUE`INDIDOG`INDILAST`INDINOT`INDIPET`INDISICK`INDITHICK`INDIFAT`INDISCHNAPPSED`INDILOW`INDISAD`INDIDONG`INDIITCH`INDIPIG`INDIPEEP`INDICHEAP`INDIBLOW`INDIGOAT"
+msgpoo .byte "INDILOL`INDIPOO`INDINO`INDIBAD`INDIBLUE`INDIDOG`INDILAST`INDINOT`INDIPET`INDISICK`INDITHICK`INDIFAT`INDISCHNAPPSED`INDILOW`INDISAD`INDIDONG`INDIITCH`INDIPIG`INDIPEEP`INDICHEAP`INDIBLOW`INDIGOAT`INDIJOKE`INDIPOOR`INDITEAR`INDIJAR`INDICRAP`INDISLIP`INDISPIN``````";`INDIWEEP"
 	org $3800
 	INCBIN "fontbin"
 	org $BC00
