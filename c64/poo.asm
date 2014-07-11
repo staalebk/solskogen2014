@@ -12,6 +12,7 @@ scrollpos   ds 1
 iscrollbit	ds 1
 iscrollchr	ds 1
 iscrollpos  ds 1
+counter     ds 1
 scene		ds 1
 
 	echo "----",($100 - *) , "bytes of RAM left"
@@ -123,7 +124,7 @@ fillr	ldx #$00
 		cmp #$00
 		beq newchar
 oldchar	ldx scrollpos
-		lda msgpoo,x
+		lda msgz,x
 		clc
 		adc #$40
 		sta $049F
@@ -136,7 +137,7 @@ oldchar	ldx scrollpos
 		rts
 		
 newchar	ldx scrollpos
-		lda msgpoo,x
+		lda msgz,x
 		sta $04C7
 		sec
 		sbc #$40
@@ -220,8 +221,62 @@ irq2    dec $d020
 		STA $02
         LDA $DC0D
         STX $03
-        STY $04		
-		lda #<irq	;this is how we set up
+        STY $04
+
+colourbars  asl $d019               ; acknowledge interrupt	
+
+            lda #00                 ; init raster counter
+            sta counter
+
+            ldx index
+            ldy counter
+            lda delaytable,y
+            sbc #01
+            bne colourbars+15
+            lda colourtable,x      ; set background colour
+            sta $d021
+            inx
+            txa
+            and #15
+            tax
+            iny
+            cpy #16
+            nop
+            bne colourbars+12
+resetColour ldy #8                  ; back to black background
+            dey
+            bne resetColour+2
+            ldy #0
+            sty $d021
+
+            lda #<update            ; point to next interrupt
+            ldx #>update
+            sta $0314
+            stx $0315
+
+            lda #250                ; set trigger line
+            sta $d012
+			jmp out
+update      dec smooth              ; apply smoothing to animation
+            bne update+20
+            lda #03
+            sta smooth
+            lda index               ; cycle start colour
+            adc #01
+            and #15
+            sta index
+
+            asl $d019               ; acknowledge interrupt
+
+            lda #<colourbars        ; point to next interrupt
+            ldx #>colourbars
+            sta $0314
+            stx $0315
+
+            lda #49                 ; set trigger line
+            sta $d012	
+
+out:		lda #<irq	;this is how we set up
 		sta $fffe	;the address of our interrupt code
 		lda #>irq
 		sta $ffff
@@ -305,7 +360,25 @@ restore	dec $d020	; visualize interrupt	lda #<irq	;this is how we set up
 msgz .byte "LOREMIPS`LOREMLIP``````````XXXX`THING`XX`XXXXXXX```````````````"
 
 msgpoo .byte "INDILOL`INDIPOO`INDINO`INDIBAD`INDIBLUE`INDIDOG`INDILAST`INDINOT`INDIPET`INDISICK`INDITHICK`INDIFAT`INDISCHNAPPSED`INDILOW`INDISAD`INDIDONG`INDIITCH`INDIPIG`INDIPEEP`INDICHEAP`INDIBLOW`INDIGOAT`INDIJOKE`INDIPOOR`INDITEAR`INDIJAR`INDICRAP`INDISLIP`INDISPIN``````";`INDIWEEP"
+index       .byte 00                ; starting colour index
+smooth      .byte 03                
+delaytable	.byte $08,$03,$08,$08,$08,$08,$08,$08
+            .byte $08,$03,$08,$08,$08,$08,$08,$04
+colourtable .byte 13, 03, 14, 04, 06, 04, 14, 13
+			.byte 7,10,8,2,9,2,8,10
+text        .byte 173, 160, 146, 129, 147, 148, 133, 146 
+            .byte 160, 131, 143, 140, 143, 149, 146, 160 
+            .byte 131, 153, 131, 140, 133, 160, 155, 151 
+            .byte 151, 151, 174, 176, 152, 131, 182, 180 
+            .byte 174, 131, 143, 141, 157, 160, 173, 160
+            .byte 160, 160, 160, 160, 160, 160, 131, 143
+            .byte 140, 143, 149, 146, 160, 147, 144, 140
+            .byte 137, 148, 160, 129, 131, 146, 143, 147
+            .byte 147, 160, 177, 182, 160, 140, 137, 142
+            .byte 133, 147, 160, 160, 160, 160, 160, 160
+
 	org $3800
 	INCBIN "fontbin"
 	org $BC00
     INCBIN "indiepoo.bin"
+	
