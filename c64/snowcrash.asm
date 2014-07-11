@@ -97,7 +97,7 @@ dark:	lda $d020 ;copy border color into
 		
 		
 		ldx #$00
-color:	lda #$02
+color:	lda #$05
 		sta $d800,x
 		sta $d900,x
 		sta $da00,x
@@ -109,17 +109,17 @@ color:	lda #$02
 draw	ldx #$00
 		ldy #$00
 .loop	lda msgz,x
-		sta $0428,y
+		sta $04A0,y
 		sec
 		sbc #$40
-		sta $0400,y
+		sta $0478,y
 		iny
 		clc
 		adc #$80
-		sta $0400,y
+		sta $0478,y
 		clc
 		adc #$40
-		sta $0428,y
+		sta $04A0,y
 		inx
 		iny
 		cpx #$13
@@ -128,10 +128,10 @@ draw	ldx #$00
 
 ; First move everything one step to the left
 fillr	ldx #$00
-.loopr	lda $0401,x
-		sta $0400,x
-		lda $0429,x
-		sta $0428,x
+.loopr	lda $0479,x
+		sta $0478,x
+		lda $04A1,x
+		sta $04A0,x
 		inx
 		cpx #$28
 		bne .loopr
@@ -143,10 +143,10 @@ oldchar	ldx scrollpos
 		lda msgz,x
 		clc
 		adc #$40
-		sta $0427
+		sta $049F
 		clc
 		adc #$40
-		sta $044f
+		sta $04C7
 		lda #$00
 		sta scrollchr
 		inc scrollpos
@@ -154,17 +154,17 @@ oldchar	ldx scrollpos
 		
 newchar	ldx scrollpos
 		lda msgz,x
-		sta $044f
+		sta $04C7
 		sec
 		sbc #$40
-		sta $0427
+		sta $049F
 		inc scrollchr
 		rts
 		
 		
 		
 dscroll	dec scrollbit
-		dec scrollbit
+;		dec scrollbit  ; Double speed
 		lda scrollbit
 		cmp #$bf
 		bne setsrll
@@ -243,7 +243,7 @@ restore		LDA #$0F
         RTI
 
 ;msgz .byte "INDIEPOO`PRESENTS``````````EVRY`THING`IS`AWESOME```````````````"
-msgz .byte "XXXXXXXX`PRESENTS``````````XXXX`THING`XX`XXXXXXX```````````````"
+msgz .byte "LOREMIPS`LOREMLIP``````````XXXX`THING`XX`XXXXXXX```````````````"
 
 	org $3800
 	INCBIN "fontbin"
