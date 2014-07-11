@@ -55,7 +55,7 @@ scene		ds 1
 	lda #$01   ;this is how to tell the VICII to generate a raster interrupt
 	sta $d01a
 
-	lda #$50   ;this is how to tell at which rasterline we want the irq to be triggered
+	lda #$00   ;this is how to tell at which rasterline we want the irq to be triggered
 	sta $d012
 
 	lda #$1b   ;as there are more than 256 rasterlines, the topmost bit of $d011 serves as
@@ -167,10 +167,10 @@ setsrll sta $d016
 
 ; First move everything one step to the left
 ifillr	ldx #$00
-.iloopr	lda $0479,x
-		sta $0478,x
-		lda $04A1,x
-		sta $04A0,x
+.iloopr	lda $0749,x
+		sta $0748,x
+		lda $0771,x
+		sta $0770,x
 		inx
 		cpx #$28
 		bne .iloopr
@@ -182,10 +182,10 @@ ioldchar	ldx iscrollpos
 		lda msgpoo,x
 		clc
 		adc #$40
-		sta $049F
+		sta $076F
 		clc
 		adc #$40
-		sta $04C7
+		sta $0797
 		lda #$00
 		sta iscrollchr
 		inc iscrollpos
@@ -193,10 +193,10 @@ ioldchar	ldx iscrollpos
 		
 inewchar	ldx iscrollpos
 		lda msgpoo,x
-		sta $04C7
+		sta $0797
 		sec
 		sbc #$40
-		sta $049F
+		sta $076F
 		inc iscrollchr
 		rts
 		
@@ -216,6 +216,29 @@ isetsrll sta $d016
 
 
 
+irq2    dec $d020
+		STA $02
+        LDA $DC0D
+        STX $03
+        STY $04		
+		lda #<irq	;this is how we set up
+		sta $fffe	;the address of our interrupt code
+		lda #>irq
+		sta $ffff
+		lda #$00   ;this is how to tell at which rasterline we want the irq to be triggered
+		sta $d012
+		
+		jsr iscroll
+		
+		;	Restore stack
+		inc $d020	; visualize interrupt
+		
+		LDA #$0F
+        STA $D019
+        LDY $04
+        LDX $03
+        LDA $02
+        RTI
 	;Being all kernal irq handlers switched off we have to do more work by ourselves.
 	;When an interrupt happens the CPU will stop what its doing, store the status and return address
 	;into the stack, and then jump to the interrupt routine. It will not store other registers, and if
@@ -234,7 +257,7 @@ irq     STA $02
         STX $03
         STY $04
 ;	Stack is now saved, lets party!
-;		inc $d020		;  visualize interrupt
+		inc $d020		;  visualize interrupt
 		jsr $BC03 ;Play some music
 		; Lets see what we should be doing...
 ;init	lda #$00
@@ -251,8 +274,8 @@ dscr	lda #$50
 prescr	lda #$00
 		cmp intcount2
 		;bne timer
-		;jsr dscroll
-		jsr iscroll
+		jsr dscroll
+		;jsr iscroll
 		
 timer	inc intcount1
 		lda intcount1
@@ -263,8 +286,15 @@ timer	inc intcount1
 		
 		
 ;	Restore stack
-;restore	dec $d020	; visualize interrupt
-restore		LDA #$0F
+restore	dec $d020	; visualize interrupt	lda #<irq	;this is how we set up
+		lda #<irq2	;this is how we set up
+		sta $fffe	;the address of our interrupt code
+		lda #>irq2
+		sta $ffff
+		lda #$60   ;this is how to tell at which rasterline we want the irq to be triggered
+		sta $d012
+
+		LDA #$0F
         STA $D019
         LDY $04
         LDX $03
