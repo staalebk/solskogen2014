@@ -26,7 +26,7 @@ scene		ds 1
 	lda #$00
 	tay
 	lda #$0B
-	jsr $C357
+	jsr $BC00
 
 	
 	
@@ -91,6 +91,9 @@ clearscrl: sta $0400,x
 	
 dark:	lda $d020 ;copy border color into
 		sta $d021 ;main area color
+		lda #$00
+		sta $d020 ; Black border
+		sta $d021 ; black main
 		
 		
 		ldx #$00
@@ -137,7 +140,7 @@ fillr	ldx #$00
 		cmp #$00
 		beq newchar
 oldchar	ldx scrollpos
-		lda msgd,x
+		lda msgz,x
 		clc
 		adc #$40
 		sta $0427
@@ -150,7 +153,7 @@ oldchar	ldx scrollpos
 		rts
 		
 newchar	ldx scrollpos
-		lda msgd,x
+		lda msgz,x
 		sta $044f
 		sec
 		sbc #$40
@@ -203,8 +206,8 @@ irq     STA $02
         STX $03
         STY $04
 ;	Stack is now saved, lets party!
-		inc $d020		;  visualize interrupt
-		jsr $BDE4 ;Play some music
+;		inc $d020		;  visualize interrupt
+		jsr $BC03 ;Play some music
 		; Lets see what we should be doing...
 ;init	lda #$00
 ;		cmp intcount1
@@ -231,18 +234,18 @@ timer	inc intcount1
 		
 		
 ;	Restore stack
-restore	dec $d020	; visualize interrupt
-		LDA #$0F
+;restore	dec $d020	; visualize interrupt
+restore		LDA #$0F
         STA $D019
         LDY $04
         LDX $03
         LDA $02
         RTI
 
-msgd .byte "DARKLITE`PRESENTS`"
-msgz .byte "ZOMGTRONICS`PRESENTS`"
+;msgz .byte "INDIEPOO`PRESENTS``````````EVRY`THING`IS`AWESOME```````````````"
+msgz .byte "XXXXXXXX`PRESENTS``````````XXXX`THING`XX`XXXXXXX```````````````"
 
 	org $3800
 	INCBIN "fontbin"
-	org $BC00-$7E
-    INCBIN "Delta.sid"
+	org $BC00
+    INCBIN "indiepoo.bin"
