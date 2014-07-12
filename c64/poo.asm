@@ -14,14 +14,32 @@ iscrollchr	ds 1
 iscrollpos  ds 1
 counter     ds 1
 scene		ds 1
+sinpos      ds 1
 
 	echo "----",($100 - *) , "bytes of RAM left"
 	SEG CODE
+
 
 ; Lets make this stuff autoload address on 4096
 	SEG	
 	org $0801
 	.byte $0c,$08,$0a,$00,$9e,$20,$34,$30,$39,$36,$00,$00,$00
+
+	org $840
+	;-------------------------------------------------------------------------------------
+;       Sprite No: 0
+;          Colour: 7
+;  Multi Colour 0: 2
+;  Multi Colour 1: 6
+;            Size: Normal
+;-------------------------------------------------------------------------------------
+	.byte 0,16,0,0,24,0,0,24,0,0,24,0,0,20,0,0,20,0,0,38
+	.byte 0,0,66,0,3,131,0,4,1,0,8,1,0,16,1,0,32,67,224,32
+	.byte 62,16,32,0,16,16,0,16,16,0,16,15,128,224,0,127,0,0,0,0
+	.byte 0,0,0,0
+;-------------------------------------------------------------------------------------
+	
+
 	
 ; Our entry point
 	org $1000
@@ -32,7 +50,17 @@ scene		ds 1
 	lda #$0B
 	jsr $BC00
 
+	lda #$21	; sprpits at 1400
+	sta $07f8
+	lda #%0000001 ;enable spriit 1
+	lda #$FF
+    sta $d015
 	
+	lda #$80  ;Middle of screen
+    sta $d000
+    sta $d001
+	
+
 	
 ; clear interrupts
 	sei
@@ -71,6 +99,8 @@ scene		ds 1
 	sta $d018
 
 
+
+
 ;	asl $d019
 ; zero some stuff
 	lda #$00
@@ -78,7 +108,10 @@ scene		ds 1
 	sta intcount2
 	sta scrollchr
 	sta scrollpos
+	sta sinpos
 	jsr	clearscr
+	
+	
 	cli			;enable maskable interrupts again
 
 	jmp *	;we better don't RTS, the ROMS are now switched off, there's no way back to the system
@@ -89,7 +122,7 @@ clearscr:	ldx #$00
 clearscrl: sta $0400,x
 		sta $0500,x
         sta $0600,x
-        sta $0700,x
+  ;      sta $0700,x
         dex
         bne clearscrl
 	
@@ -101,7 +134,7 @@ dark:	lda $d020 ;copy border color into
 		
 		
 		ldx #$00
-color:	lda #$02
+color:	lda #$00
 		sta $d800,x
 		sta $d900,x
 		sta $da00,x
@@ -109,14 +142,21 @@ color:	lda #$02
 		inx
 		cpx #$00
 		bne color
+		
+		ldx #$00
+colorhead:	lda #$03
+		sta $d800,x
+		inx
+		cpx #$A0
+		bne colorhead
 		rts
 
 ; First move everything one step to the left
 fillr	ldx #$00
-.loopr	lda $0401,x
-		sta $0400,x
-		lda $0429,x
+.loopr	lda $0429,x
 		sta $0428,x
+		lda $0451,x
+		sta $0450,x
 		inx
 		cpx #$28
 		bne .loopr
@@ -128,10 +168,10 @@ oldchar	ldx scrollpos
 		lda msgz,x
 		clc
 		adc #$40
-		sta $0427
+		sta $044f
 		clc
 		adc #$40
-		sta $044f
+		sta $0477
 		lda #$00
 		sta scrollchr
 		inc scrollpos
@@ -139,10 +179,10 @@ oldchar	ldx scrollpos
 		
 newchar	ldx scrollpos
 		lda msgz,x
-		sta $044f
+		sta $0477
 		sec
 		sbc #$40
-		sta $0427
+		sta $044f
 		inc scrollchr
 		rts
 		
@@ -314,6 +354,13 @@ irq     STA $02
 ;		bne dscr
 		;jsr clearscr
 ;		jsr draw
+
+	inc sinpos
+	ldx sinpos
+	lda sine,x
+    sta $d000
+	lda cosine,x
+    sta $d001
 		
 dscr	lda #$50
 		cmp intcount1
@@ -348,8 +395,8 @@ restore		lda #<irq2	;this is how we set up
         LDA $02
         RTI
 
-;msgz .byte "INDIEPOO`PRESENTS``````````EVRY`THING`IS`AWESOME```````````````"
-msgz .byte "LOREMIPS`LOREMLIP``````````XXXX`THING`XX`XXXXXXX```````````````"
+msgz .byte "````````````````````INDIEPOO`PRESENTS``````````EVRY`THING`IS`AWESOME```````````````MUSIC`BY`RESPONSE`OF`DARKLITE`````````FONT`BY`QUARRYMAN```````````CODE`BY`CHILLER``````````````````````````````````````````````````````````````````````````````````````````````````"
+;msgz .byte "LOREMIPS`LOREMLIP``````````XXXX`THING`XX`XXXXXXX```````````````"
 
 msgpoo .byte "INDILOL`INDIPOO`INDINO`INDIBAD`INDIBLUE`INDIDOG`INDILAST`INDINOT`INDIPET`INDISICK`INDITHICK`INDIFAT`INDISCHNAPPSED`INDILOW`INDISAD`INDIDONG`INDIITCH`INDIPIG`INDIPEEP`INDICHEAP`INDIBLOW`INDIGOAT`INDIJOKE`INDIPOOR`INDITEAR`INDIJAR`INDICRAP`INDISLIP`INDISPIN``````";`INDIWEEP"
 index       .byte 00                ; starting colour index
@@ -358,16 +405,40 @@ delaytable	.byte $08,$03,$08,$08,$08,$08,$08,$08
             .byte $08,$03,$08,$08,$08,$08,$08,$04
 colourtable .byte 13, 03, 14, 04, 06, 04, 14, 13
 			.byte 7,10,8,2,9,2,8,10
-text        .byte 173, 160, 146, 129, 147, 148, 133, 146 
-            .byte 160, 131, 143, 140, 143, 149, 146, 160 
-            .byte 131, 153, 131, 140, 133, 160, 155, 151 
-            .byte 151, 151, 174, 176, 152, 131, 182, 180 
-            .byte 174, 131, 143, 141, 157, 160, 173, 160
-            .byte 160, 160, 160, 160, 160, 160, 131, 143
-            .byte 140, 143, 149, 146, 160, 147, 144, 140
-            .byte 137, 148, 160, 129, 131, 146, 143, 147
-            .byte 147, 160, 177, 182, 160, 140, 137, 142
-            .byte 133, 147, 160, 160, 160, 160, 160, 160
+			
+sine dc.b 125,123,121,119,117,115,113,112,110,108,106,104,103,101,99,97
+	dc.b 96,94,92,91,89,87,86,84,83,81,80,78,77,75,74,73
+	dc.b 71,70,69,68,66,65,64,63,62,61,60,59,58,57,57,56
+	dc.b 55,54,54,53,53,52,52,51,51,51,50,50,50,50,50,50
+	dc.b 50,50,50,50,50,50,50,51,51,51,52,52,53,53,54,55
+	dc.b 55,56,57,58,59,60,60,61,62,64,65,66,67,68,69,71
+	dc.b 72,73,75,76,77,79,80,82,83,85,87,88,90,91,93,95
+	dc.b 97,98,100,102,104,105,107,109,111,113,114,116,118,120,122,124
+	dc.b 125,127,129,131,133,135,136,138,140,142,144,145,147,149,151,152
+	dc.b 154,156,158,159,161,162,164,166,167,169,170,172,173,174,176,177
+	dc.b 178,180,181,182,183,184,185,187,188,189,189,190,191,192,193,194
+	dc.b 194,195,196,196,197,197,198,198,198,199,199,199,199,199,199,199
+	dc.b 199,199,199,199,199,199,198,198,198,197,197,196,196,195,195,194
+	dc.b 193,192,192,191,190,189,188,187,186,185,184,183,181,180,179,178
+	dc.b 176,175,174,172,171,169,168,166,165,163,162,160,158,157,155,153
+	dc.b 152,150,148,146,145,143,141,139,137,136,134,132,130,128,126,125
+
+cosine dc.b 100,100,100,100,100,100,101,101,101,102,102,103,104,104,105,106
+	dc.b 107,108,109,110,111,112,113,114,115,116,117,119,120,121,122,124
+	dc.b 125,126,127,129,130,131,132,133,134,136,137,138,139,140,141,142
+	dc.b 143,143,144,145,146,146,147,147,148,148,149,149,149,149,149,149
+	dc.b 149,149,149,149,149,149,148,148,147,147,146,146,145,144,143,143
+	dc.b 142,141,140,139,138,137,136,134,133,132,131,130,129,127,126,125
+	dc.b 124,122,121,120,119,117,116,115,114,113,112,111,110,109,108,107
+	dc.b 106,105,104,104,103,102,102,101,101,101,100,100,100,100,100,100
+	dc.b 100,100,100,100,100,100,101,101,101,102,102,103,104,104,105,106
+	dc.b 107,108,109,110,111,112,113,114,115,116,117,119,120,121,122,124
+	dc.b 125,126,127,129,130,131,132,133,134,136,137,138,139,140,141,142
+	dc.b 143,143,144,145,146,146,147,147,148,148,149,149,149,149,149,149
+	dc.b 149,149,149,149,149,149,148,148,147,147,146,146,145,144,143,143
+	dc.b 142,141,140,139,138,137,136,134,133,132,131,130,129,127,126,125
+	dc.b 124,122,121,120,119,117,116,115,114,113,112,111,110,109,108,107
+	dc.b 106,105,104,104,103,102,102,101,101,101,100,100,100,100,100,100
 
 	org $3800
 ;	INCBIN "fontbin"
