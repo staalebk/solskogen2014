@@ -101,12 +101,13 @@ dark:	lda $d020 ;copy border color into
 		
 		
 		ldx #$00
-color:	lda #$05
+color:	lda #$02
 		sta $d800,x
 		sta $d900,x
 		sta $da00,x
+		sta $db00,x
 		inx
-		cpx #$FF
+		cpx #$00
 		bne color
 		rts
 
@@ -217,11 +218,15 @@ isetsrll sta $d016
 
 
 
-irq2    dec $d020
-		STA $02
-        LDA $DC0D
-        STX $03
-        STY $04
+irq2	lda #<colourbars	;this is how we set up
+		sta $fffe	;the address of our interrupt code
+		lda #>colourbars
+		sta $ffff
+		lda #$D9  ;this is how to tell at which rasterline we want the irq to be triggered
+		sta $d012
+				jsr iscroll
+				asl $d019
+				RTI
 
 colourbars  asl $d019               ; acknowledge interrupt	
 
@@ -251,12 +256,13 @@ resetColour ldy #8                  ; back to black background
 
             lda #<update            ; point to next interrupt
             ldx #>update
-            sta $0314
-            stx $0315
+            sta $fffe
+            stx $ffff
 
             lda #250                ; set trigger line
-            sta $d012
-			jmp out
+            sta $d012	
+			RTI
+			
 update      dec smooth              ; apply smoothing to animation
             bne update+20
             lda #03
@@ -268,13 +274,6 @@ update      dec smooth              ; apply smoothing to animation
 
             asl $d019               ; acknowledge interrupt
 
-            lda #<colourbars        ; point to next interrupt
-            ldx #>colourbars
-            sta $0314
-            stx $0315
-
-            lda #49                 ; set trigger line
-            sta $d012	
 
 out:		lda #<irq	;this is how we set up
 		sta $fffe	;the address of our interrupt code
@@ -283,16 +282,9 @@ out:		lda #<irq	;this is how we set up
 		lda #$00   ;this is how to tell at which rasterline we want the irq to be triggered
 		sta $d012
 		
-		jsr iscroll
+
 		
-		;	Restore stack
-		inc $d020	; visualize interrupt
-		
-		LDA #$0F
-        STA $D019
-        LDY $04
-        LDX $03
-        LDA $02
+	
         RTI
 	;Being all kernal irq handlers switched off we have to do more work by ourselves.
 	;When an interrupt happens the CPU will stop what its doing, store the status and return address
@@ -312,7 +304,7 @@ irq     STA $02
         STX $03
         STY $04
 ;	Stack is now saved, lets party!
-		inc $d020		;  visualize interrupt
+;		inc $d020		;  visualize interrupt
 		jsr $BC03 ;Play some music
 		; Lets see what we should be doing...
 ;init	lda #$00
@@ -341,12 +333,12 @@ timer	inc intcount1
 		
 		
 ;	Restore stack
-restore	dec $d020	; visualize interrupt	lda #<irq	;this is how we set up
-		lda #<irq2	;this is how we set up
+;restore	dec $d020	; visualize interrupt	lda #<irq	;this is how we set up
+restore		lda #<irq2	;this is how we set up
 		sta $fffe	;the address of our interrupt code
 		lda #>irq2
 		sta $ffff
-		lda #$60   ;this is how to tell at which rasterline we want the irq to be triggered
+		lda #$70  ;this is how to tell at which rasterline we want the irq to be triggered
 		sta $d012
 
 		LDA #$0F
@@ -378,7 +370,9 @@ text        .byte 173, 160, 146, 129, 147, 148, 133, 146
             .byte 133, 147, 160, 160, 160, 160, 160, 160
 
 	org $3800
-	INCBIN "fontbin"
+;	INCBIN "fontbin"
+;	org $2000
+	INCBIN "flipfont"
 	org $BC00
     INCBIN "indiepoo.bin"
 	
