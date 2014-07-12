@@ -113,10 +113,10 @@ color:	lda #$02
 
 ; First move everything one step to the left
 fillr	ldx #$00
-.loopr	lda $0479,x
-		sta $0478,x
-		lda $04A1,x
-		sta $04A0,x
+.loopr	lda $0401,x
+		sta $0400,x
+		lda $0429,x
+		sta $0428,x
 		inx
 		cpx #$28
 		bne .loopr
@@ -128,10 +128,10 @@ oldchar	ldx scrollpos
 		lda msgz,x
 		clc
 		adc #$40
-		sta $049F
+		sta $0427
 		clc
 		adc #$40
-		sta $04C7
+		sta $044f
 		lda #$00
 		sta scrollchr
 		inc scrollpos
@@ -139,10 +139,10 @@ oldchar	ldx scrollpos
 		
 newchar	ldx scrollpos
 		lda msgz,x
-		sta $04C7
+		sta $044f
 		sec
 		sbc #$40
-		sta $049F
+		sta $0427
 		inc scrollchr
 		rts
 		
