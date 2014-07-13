@@ -15,6 +15,10 @@ iscrollpos  ds 1
 counter     ds 1
 scene		ds 1
 sinpos      ds 1
+	ORG $4000
+vidmem		ds 1
+	ORG $4400
+colmem		ds 1
 
 	echo "----",($100 - *) , "bytes of RAM left"
 	SEG CODE
@@ -355,6 +359,9 @@ irq     STA $02
 		;jsr clearscr
 ;		jsr draw
 
+	lda scrollpos
+	cmp #$B0
+	beq balle
 	inc sinpos
 	ldx sinpos
 	lda sine,x
@@ -394,7 +401,137 @@ restore		lda #<irq2	;this is how we set up
         LDX $03
         LDA $02
         RTI
+		
+		
+balle:
+      sei
+	  	lda #<irqend	;this is how we set up
+	sta $fffe	;the address of our interrupt code
+	lda #>irqend
+	sta $ffff
+	
+	lda #$01   ;this is how to tell the VICII to generate a raster interrupt
+	sta $d01a
 
+	lda #$00   ;this is how to tell at which rasterline we want the irq to be triggered
+	sta $d012
+
+		ldx #$00
+flytte1:	lda $6000,x
+        sta $2000,x
+		lda $6000+$100,x
+        sta $2000+$100,x
+		lda  $6000+$200,x
+        sta $2000+$200,x
+		lda  $6000+$300,x
+        sta $2000+$300,x
+		lda  $6000+$400,x
+        sta $2000+$400,x
+		lda  $6000+$500,x
+        sta $2000+$500,x
+		lda  $6000+$600,x
+        sta $2000+$600,x
+		lda  $6000+$700,x
+        sta $2000+$700,x
+		lda  $6000+$800,x
+        sta $2000+$800,x
+		lda  $6000+$900,x
+        sta $2000+$900,x
+		lda  $6000+$A00,x
+        sta $2000+$A00,x
+		lda  $6000+$B00,x
+        sta $2000+$B00,x
+		lda  $6000+$C00,x
+        sta $2000+$C00,x
+		lda  $6000+$D00,x
+        sta $2000+$D00,x
+		lda  $6000+$E00,x
+        sta $2000+$E00,x
+		lda  $6000+$F00,x
+        sta $2000+$F00,x
+	    inx
+		cpx #$00
+		bne flytte1
+		lda #$00
+flytte2:lda $7000,x
+        sta $3000,x
+		lda $7000+$100,x
+        sta $3000+$100,x
+		lda  $7000+$200,x
+        sta $3000+$200,x
+		lda  $7000+$300,x
+        sta $3000+$300,x
+		lda  $7000+$400,x
+        sta $3000+$400,x
+		lda  $7000+$500,x
+        sta $3000+$500,x
+		lda  $7000+$600,x
+        sta $3000+$600,x
+		lda  $7000+$700,x
+        sta $3000+$700,x
+		lda  $7000+$800,x
+        sta $3000+$800,x
+		lda  $7000+$900,x
+        sta $3000+$900,x
+		lda  $7000+$A00,x
+        sta $3000+$A00,x
+		lda  $7000+$B00,x
+        sta $3000+$B00,x
+		lda  $7000+$C00,x
+        sta $3000+$C00,x
+		lda  $7000+$D00,x
+        sta $3000+$D00,x
+		lda  $7000+$E00,x
+        sta $3000+$E00,x
+		lda  $7000+$F00,x
+        sta $3000+$F00,x
+		inx
+		cpx #$00
+		bne flytte2
+		
+
+
+      lda #0
+      ldx #0
+      sta $d020
+      stx $d021
+      lda #$3b ;<--- Turn on bitmap mode
+      ldx #$18 ;<--- Turn on all bitmap characters     
+      ldy #$03
+      sta $d011
+      stx $d018
+      stx $d016
+      sty $dd00
+      ldx #$00
+setpic lda vidmem,x
+       sta $0400,x
+       lda vidmem+$100,x
+       sta $0500,x
+       lda vidmem+$200,x
+       sta $0600,x
+       lda vidmem+$2e8,x
+       sta $06e8,x
+       lda colmem,x
+       sta $d800,x
+       lda colmem+$100,x
+       sta $d900,x
+       lda colmem+$200,x
+       sta $da00,x
+       lda colmem+$2e8,x
+       sta $dae8,x
+       inx
+       bne setpic
+	   
+	   cli
+hold   lda $dc01
+       cmp #$ef
+       bne hold
+       jmp $fce2 ; C64 reset
+	   
+	   
+irqend:
+		;jsr $BC03
+		rti
 msgz .byte "````````````````````INDIEPOO`PRESENTS``````````EVRY`THING`IS`AWESOME```````````````MUSIC`BY`RESPONSE`OF`DARKLITE`````````FONT`BY`QUARRYMAN```````````CODE`BY`CHILLER````````````````````````````"
 ;msgz .byte "LOREMIPS`LOREMLIP``````````XXXX`THING`XX`XXXXXXX```````````````"
 
@@ -440,10 +577,19 @@ cosine dc.b 100,100,100,100,100,100,101,101,101,102,102,103,104,104,105,106
 	dc.b 123,122,121,120,119,117,116,115,114,113,112,111,110,109,108,107
 	dc.b 106,105,104,104,103,102,102,101,101,101,100,100,100,100,100,100
 
+
+
+
+
 	org $3800
 ;	INCBIN "fontbin"
 ;	org $2000
 	INCBIN "flipfont"
+    org $4000
+    INCBIN "joms.video"
+    org $4400
+    INCBIN "joms.color"
+		org $6000
+    INCBIN "joms.bitmap"
 	org $BC00
-    INCBIN "indiepoo.bin"
-	
+    INCBIN "indiepoo.bin"	
