@@ -1,0 +1,5 @@
+b = bytearray(open('wcehb_ko_fs.koala', 'rb').read())
+open('joms.bitmap', 'wb').write(b[2:8002])
+open('joms.video', 'wb').write(b[8002:9002])
+open('joms.color', 'wb').write(b[9002:10002])
+open('joms.bg', 'wb').write(b[10002:])
